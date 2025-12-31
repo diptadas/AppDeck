@@ -1,8 +1,6 @@
 package com.appdeck.app
 
 import android.app.Application
-import android.content.Intent
-import android.content.pm.ApplicationInfo
 import android.content.pm.LauncherApps
 import android.content.pm.PackageManager
 import android.os.UserHandle
@@ -10,9 +8,6 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 
 class FolderViewModel(application: Application) : AndroidViewModel(application) {
     private val db = AppDatabase.getDatabase(application)
@@ -46,15 +41,8 @@ class FolderViewModel(application: Application) : AndroidViewModel(application) 
         }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
-    var editMode by mutableStateOf(false)
-        private set
-
     init {
         loadInstalledApps()
-    }
-
-    fun toggleEdit() { 
-        editMode = !editMode 
     }
 
     private fun loadInstalledApps() = viewModelScope.launch {

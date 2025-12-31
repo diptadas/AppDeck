@@ -70,9 +70,9 @@ fun AppListScreen(
         // Combined grid for folders and apps
         item {
             LazyVerticalGrid(
-                columns = GridCells.Fixed(5),
-                modifier = Modifier.height(((folders.size + uncategorizedApps.size + 4) / 5 * 120).dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                columns = GridCells.Fixed(4),
+                modifier = Modifier.height(((folders.size + uncategorizedApps.size + 3) / 4 * 120).dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 // Folders first

@@ -197,7 +197,7 @@ fun FolderGridItem(
     ) {
         Box(
             modifier = Modifier
-                .size(56.dp)
+                .size(64.dp)
                 .background(
                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
                     shape = CircleShape
@@ -208,25 +208,25 @@ fun FolderGridItem(
                 0 -> Icon(
                     imageVector = Icons.Default.Folder,
                     contentDescription = null,
-                    modifier = Modifier.size(32.dp),
+                    modifier = Modifier.size(38.dp),
                     tint = MaterialTheme.colorScheme.primary
                 )
                 1 -> AsyncImage(
                     model = apps[0].icon,
                     contentDescription = null,
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(38.dp)
                 )
                 2 -> Row {
                     AsyncImage(
                         model = apps[0].icon,
                         contentDescription = null,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(28.dp)
                     )
                     Spacer(modifier = Modifier.width(2.dp))
                     AsyncImage(
                         model = apps[1].icon,
                         contentDescription = null,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(28.dp)
                     )
                 }
                 else -> Column(
@@ -235,19 +235,19 @@ fun FolderGridItem(
                     AsyncImage(
                         model = apps[0].icon,
                         contentDescription = null,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(22.dp)
                     )
                     Row {
                         AsyncImage(
                             model = apps[1].icon,
                             contentDescription = null,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(22.dp)
                         )
                         Spacer(modifier = Modifier.width(2.dp))
                         AsyncImage(
                             model = apps[2].icon,
                             contentDescription = null,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(22.dp)
                         )
                     }
                 }
@@ -258,7 +258,7 @@ fun FolderGridItem(
         
         Text(
             text = folder.name,
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
@@ -283,7 +283,7 @@ fun AppGridItem(
             model = app.icon,
             contentDescription = null,
             modifier = Modifier
-                .size(56.dp)
+                .size(64.dp)
                 .combinedClickable(
                     onClick = {
                         val launchIntent = context.packageManager.getLaunchIntentForPackage(app.packageName)
@@ -297,7 +297,7 @@ fun AppGridItem(
         
         Text(
             text = app.appName,
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
@@ -376,7 +376,7 @@ fun FolderPopup(
                                 model = app.icon,
                                 contentDescription = null,
                                 modifier = Modifier
-                                    .size(56.dp)
+                                    .size(64.dp)
                                     .combinedClickable(
                                         onClick = {
                                             val launchIntent = context.packageManager.getLaunchIntentForPackage(app.packageName)

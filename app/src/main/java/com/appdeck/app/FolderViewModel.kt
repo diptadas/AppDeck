@@ -3,6 +3,7 @@ package com.appdeck.app
 import android.app.Application
 import android.content.pm.LauncherApps
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Environment
 import android.os.UserHandle
 import androidx.lifecycle.AndroidViewModel
@@ -167,9 +168,45 @@ class FolderViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun importConfiguration(onComplete: (Boolean) -> Unit) = viewModelScope.launch {
-        // This is a placeholder - actual file picker implementation would be needed
-        // For now, just show the callback
-        onComplete(false)
+    fun importConfiguration(uri: Uri, onComplete: (Boolean) -> Unit) = viewModelScope.launch {
+        try {
+            val inputStream = getApplication<Application>().contentResolver.openInputStream(uri)
+            val jsonString = inputStream?.bufferedReader()?.use { it.readText() } ?: return@launch onComplete(false)
+            
+            val importData = Json.decodeFromString<ExportData>(jsonString)
+            
+            // Clear existing data
+            db.folderDao().deleteAll()
+            db.appDao().deleteAll()
+            
+            // Import folders first and create name-to-id mapping
+            val folderNameToId = mutableMapOf<String, Long>()
+            importData.folders.forEach { folderData ->
+                val folder = FolderEntity(
+                    name = folderData.name,
+                    order = folderData.order
+                )
+                val folderId = db.folderDao().insertAndGetId(folder)
+                folderNameToId[folderData.name] = folderId
+            }
+            
+            // Import apps
+            importData.apps.forEach { appData ->
+                val folderId = if (appData.folderName != null) {
+                    folderNameToId[appData.folderName]
+                } else null
+                
+                val app = AppEntity(
+                    packageName = appData.packageName,
+                    appName = appData.appName,
+                    folderId = folderId
+                )
+                db.appDao().insert(app)
+            }
+            
+            onComplete(true)
+        } catch (e: Exception) {
+            onComplete(false)
+        }
     }
 }

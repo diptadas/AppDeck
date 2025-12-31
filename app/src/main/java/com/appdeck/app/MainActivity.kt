@@ -2,15 +2,20 @@ package com.appdeck.app
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.FileDownload
-import androidx.compose.material.icons.filled.FileUpload
+import androidx.compose.material.icons.filled.Restore
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.appdeck.app.AppDeckTheme
 
 class MainActivity : ComponentActivity() {
@@ -28,8 +33,27 @@ class MainActivity : ComponentActivity() {
                 var showReorderDialog by remember { mutableStateOf(false) }
                 var showExportDialog by remember { mutableStateOf(false) }
                 var showImportDialog by remember { mutableStateOf(false) }
+                var showImportProgress by remember { mutableStateOf(false) }
                 var showExportSuccess by remember { mutableStateOf(false) }
+                var showImportSuccess by remember { mutableStateOf(false) }
+                var showImportError by remember { mutableStateOf(false) }
                 var exportedFileName by remember { mutableStateOf("") }
+
+                val filePickerLauncher = rememberLauncherForActivityResult(
+                    ActivityResultContracts.GetContent()
+                ) { uri ->
+                    uri?.let { 
+                        showImportProgress = true
+                        viewModel.importConfiguration(it) { success ->
+                            showImportProgress = false
+                            if (success) {
+                                showImportSuccess = true
+                            } else {
+                                showImportError = true
+                            }
+                        }
+                    }
+                }
 
                 Scaffold(
                     topBar = {
@@ -37,10 +61,10 @@ class MainActivity : ComponentActivity() {
                             title = { Text("AppDeck") },
                             actions = {
                                 IconButton(onClick = { showExportDialog = true }) {
-                                    Icon(Icons.Default.FileDownload, contentDescription = "Export")
+                                    Icon(Icons.Default.Save, contentDescription = "Export")
                                 }
                                 IconButton(onClick = { showImportDialog = true }) {
-                                    Icon(Icons.Default.FileUpload, contentDescription = "Import")
+                                    Icon(Icons.Default.Restore, contentDescription = "Import")
                                 }
                                 if (folders.isNotEmpty()) {
                                     IconButton(onClick = { showReorderDialog = true }) {
@@ -117,10 +141,8 @@ class MainActivity : ComponentActivity() {
                         confirmButton = {
                             TextButton(
                                 onClick = {
-                                    viewModel.importConfiguration { success ->
-                                        showImportDialog = false
-                                        // Show success/failure message
-                                    }
+                                    showImportDialog = false
+                                    filePickerLauncher.launch("application/json")
                                 }
                             ) {
                                 Text("Select File")
@@ -129,6 +151,51 @@ class MainActivity : ComponentActivity() {
                         dismissButton = {
                             TextButton(onClick = { showImportDialog = false }) {
                                 Text("Cancel")
+                            }
+                        }
+                    )
+                }
+
+                // Import progress dialog
+                if (showImportProgress) {
+                    AlertDialog(
+                        onDismissRequest = { }, // Empty - makes it non-dismissible
+                        title = { Text("Importing Configuration") },
+                        text = { 
+                            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                                CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Text("Please wait while importing your configuration...")
+                            }
+                        },
+                        confirmButton = { }, // Empty - no buttons
+                        dismissButton = { }  // Empty - no buttons
+                    )
+                }
+
+                // Import success dialog
+                if (showImportSuccess) {
+                    AlertDialog(
+                        onDismissRequest = { showImportSuccess = false },
+                        title = { Text("Import Successful") },
+                        text = { Text("Configuration imported successfully. Your folders and app assignments have been updated.") },
+                        confirmButton = {
+                            TextButton(onClick = { showImportSuccess = false }) {
+                                Text("OK")
+                            }
+                        }
+                    )
+                }
+
+                // Import error dialog
+                if (showImportError) {
+                    AlertDialog(
+                        onDismissRequest = { showImportError = false },
+                        title = { Text("Import Failed") },
+                        text = { Text("Failed to import configuration. Please check that the file is a valid AppDeck JSON export.") },
+                        confirmButton = {
+                            TextButton(onClick = { showImportError = false }) {
+                                Text("OK")
                             }
                         }
                     )

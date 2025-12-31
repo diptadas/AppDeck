@@ -17,9 +17,15 @@ interface AppDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertAll(apps: List<AppEntity>)
 
+    @Insert
+    suspend fun insert(app: AppEntity)
+
     @Update
     suspend fun updateApp(app: AppEntity)
 
     @Query("DELETE FROM apps WHERE packageName = :packageName")
     suspend fun deleteByPackageName(packageName: String)
+
+    @Query("DELETE FROM apps")
+    suspend fun deleteAll()
 }

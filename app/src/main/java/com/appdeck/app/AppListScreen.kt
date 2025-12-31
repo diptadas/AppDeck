@@ -2,6 +2,9 @@
 
 package com.appdeck.app
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -10,6 +13,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -47,6 +51,9 @@ fun AppListScreen(
     val uncategorizedApps by viewModel.uncategorizedApps.collectAsState()
     var selectedFolder by remember { mutableStateOf<FolderEntity?>(null) }
     var appToMove by remember { mutableStateOf<AppInfo?>(null) }
+    var showCreateFolderDialog by remember { mutableStateOf(false) }
+    var folderToManage by remember { mutableStateOf<FolderEntity?>(null) }
+    val allApps by viewModel.apps.collectAsState()
     
     LazyColumn(
         modifier = Modifier
@@ -56,14 +63,23 @@ fun AppListScreen(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         // Folders section
-        if (folders.isNotEmpty()) {
-            item {
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(
                     text = "Folders",
-                    style = MaterialTheme.typography.headlineSmall,
-                    modifier = Modifier.padding(bottom = 8.dp)
+                    style = MaterialTheme.typography.headlineSmall
                 )
+                IconButton(onClick = { showCreateFolderDialog = true }) {
+                    Icon(Icons.Default.Add, contentDescription = "Create folder")
+                }
             }
+        }
+        
+        if (folders.isNotEmpty()) {
             
             item {
                 LazyVerticalGrid(
@@ -73,9 +89,12 @@ fun AppListScreen(
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     items(folders) { folder ->
+                        val folderApps = allApps.filter { it.folderId == folder.id }.take(3)
                         FolderGridItem(
                             folder = folder,
-                            onClick = { selectedFolder = folder }
+                            apps = folderApps,
+                            onClick = { selectedFolder = folder },
+                            onLongPress = { folderToManage = folder }
                         )
                     }
                 }
@@ -147,25 +166,109 @@ fun AppListScreen(
             onDismiss = { appToMove = null }
         )
     }
+    
+    // Create folder dialog
+    if (showCreateFolderDialog) {
+        CreateFolderDialog(
+            onCreateFolder = { name ->
+                viewModel.createFolder(name)
+                showCreateFolderDialog = false
+            },
+            onDismiss = { showCreateFolderDialog = false }
+        )
+    }
+    
+    // Manage folder dialog
+    folderToManage?.let { folder ->
+        ManageFolderDialog(
+            folder = folder,
+            onRename = { newName ->
+                viewModel.renameFolder(folder.id, newName)
+                folderToManage = null
+            },
+            onDelete = {
+                viewModel.deleteFolder(folder.id)
+                folderToManage = null
+            },
+            onDismiss = { folderToManage = null }
+        )
+    }
 }
 
 @Composable
 fun FolderGridItem(
     folder: FolderEntity,
-    onClick: () -> Unit
+    apps: List<AppInfo>,
+    onClick: () -> Unit,
+    onLongPress: () -> Unit = {}
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .width(64.dp)
-            .clickable { onClick() }
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongPress
+            )
     ) {
-        Icon(
-            imageVector = Icons.Default.Folder,
-            contentDescription = null,
-            modifier = Modifier.size(56.dp),
-            tint = MaterialTheme.colorScheme.primary
-        )
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .background(
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                    shape = CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            when (apps.size) {
+                0 -> Icon(
+                    imageVector = Icons.Default.Folder,
+                    contentDescription = null,
+                    modifier = Modifier.size(32.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                1 -> AsyncImage(
+                    model = apps[0].icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(32.dp)
+                )
+                2 -> Row {
+                    AsyncImage(
+                        model = apps[0].icon,
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(2.dp))
+                    AsyncImage(
+                        model = apps[1].icon,
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                else -> Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    AsyncImage(
+                        model = apps[0].icon,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Row {
+                        AsyncImage(
+                            model = apps[1].icon,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(2.dp))
+                        AsyncImage(
+                            model = apps[2].icon,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
+        }
         
         Spacer(modifier = Modifier.height(4.dp))
         
@@ -408,40 +511,137 @@ fun FolderSelectionPopup(
                             )
                         }
                     }
-                    
-                    // Show remove option only for apps currently in folders
-                    if (currentFolderId != null) {
-                        item {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { onFolderSelected(null) }
-                                    .padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Folder,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(24.dp),
-                                    tint = MaterialTheme.colorScheme.outline
-                                )
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Text(
-                                    text = "Remove from folder",
-                                    style = MaterialTheme.typography.bodyLarge
-                                )
-                            }
-                        }
-                    }
                 }
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                TextButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.align(Alignment.End)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
                 ) {
-                    Text("Cancel")
+                    if (currentFolderId != null) {
+                        TextButton(
+                            onClick = { onFolderSelected(null) },
+                            colors = ButtonDefaults.textButtonColors(
+                                contentColor = MaterialTheme.colorScheme.error
+                            )
+                        ) {
+                            Text("Remove")
+                        }
+                    }
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancel")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun CreateFolderDialog(
+    onCreateFolder: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var folderName by remember { mutableStateOf("") }
+    
+    Dialog(onDismissRequest = onDismiss) {
+        Card(modifier = Modifier.padding(16.dp)) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("Create Folder", style = MaterialTheme.typography.headlineSmall)
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = folderName,
+                    onValueChange = { folderName = it },
+                    label = { Text("Folder name") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancel")
+                    }
+                    TextButton(
+                        onClick = { 
+                            if (folderName.isNotBlank()) onCreateFolder(folderName.trim())
+                        },
+                        enabled = folderName.isNotBlank()
+                    ) {
+                        Text("Create")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ManageFolderDialog(
+    folder: FolderEntity,
+    onRename: (String) -> Unit,
+    onDelete: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    var showRename by remember { mutableStateOf(false) }
+    var newName by remember { mutableStateOf(folder.name) }
+    
+    Dialog(onDismissRequest = onDismiss) {
+        Card(modifier = Modifier.padding(16.dp)) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                if (showRename) {
+                    Text("Rename Folder", style = MaterialTheme.typography.headlineSmall)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedTextField(
+                        value = newName,
+                        onValueChange = { newName = it },
+                        label = { Text("Folder name") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
+                    ) {
+                        TextButton(onClick = { showRename = false }) {
+                            Text("Cancel")
+                        }
+                        TextButton(
+                            onClick = { 
+                                if (newName.isNotBlank()) onRename(newName.trim())
+                            },
+                            enabled = newName.isNotBlank()
+                        ) {
+                            Text("Rename")
+                        }
+                    }
+                } else {
+                    Text("Manage \"${folder.name}\"", style = MaterialTheme.typography.headlineSmall)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    TextButton(
+                        onClick = { showRename = true },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Rename")
+                    }
+                    TextButton(
+                        onClick = onDelete,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Text("Delete")
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TextButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Cancel")
+                    }
                 }
             }
         }

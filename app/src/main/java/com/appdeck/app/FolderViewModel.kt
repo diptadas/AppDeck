@@ -90,6 +90,20 @@ class FolderViewModel(application: Application) : AndroidViewModel(application) 
         db.folderDao().insert(FolderEntity(name = name, order = maxOrder + 1))
     }
 
+    fun createFolder(name: String) = addFolder(name)
+
+    fun renameFolder(folderId: Long, newName: String) = viewModelScope.launch {
+        val folder = folders.value.find { it.id == folderId }
+        folder?.let {
+            db.folderDao().update(it.copy(name = newName))
+        }
+    }
+
+    fun deleteFolder(folderId: Long) = viewModelScope.launch {
+        val folder = folders.value.find { it.id == folderId }
+        folder?.let { deleteFolder(it) }
+    }
+
     fun deleteFolder(folder: FolderEntity) = viewModelScope.launch {
         db.folderDao().delete(folder)
         // Move apps to uncategorized

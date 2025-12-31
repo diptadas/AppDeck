@@ -11,6 +11,9 @@ interface FolderDao {
     @Insert
     suspend fun insert(folder: FolderEntity)
 
+    @Update
+    suspend fun update(folder: FolderEntity)
+
     @Delete
     suspend fun delete(folder: FolderEntity)
 }

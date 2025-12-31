@@ -13,3 +13,12 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Kotlin
+*.kotlin_module
+*.kotlin_metadata
+.kotlin/
+
+# KAPT
+/app/build/generated/
+/app/build/tmp/kapt3/

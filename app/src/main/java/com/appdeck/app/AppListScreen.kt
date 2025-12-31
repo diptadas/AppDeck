@@ -22,6 +22,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -31,6 +32,8 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CircleShape
@@ -43,6 +46,12 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.animation.core.*
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 @Composable
 fun AppListScreen(
@@ -57,6 +66,7 @@ fun AppListScreen(
     var showCreateFolderDialog by remember { mutableStateOf(false) }
     var folderToManage by remember { mutableStateOf<FolderEntity?>(null) }
     var showReorderDialog by remember { mutableStateOf(false) }
+    var isClosingFolder by remember { mutableStateOf(false) }
     val allApps by viewModel.apps.collectAsState()
     
     LazyColumn(
@@ -160,7 +170,16 @@ fun AppListScreen(
         FolderPopup(
             folder = folder,
             viewModel = viewModel,
-            onDismiss = { selectedFolder = null }
+            isClosing = isClosingFolder,
+            onDismiss = { 
+                isClosingFolder = true
+                // Delay to allow animation
+                kotlinx.coroutines.MainScope().launch {
+                    kotlinx.coroutines.delay(200)
+                    selectedFolder = null
+                    isClosingFolder = false
+                }
+            }
         )
     }
     
@@ -397,17 +416,46 @@ fun AppGridItem(
 fun FolderPopup(
     folder: FolderEntity,
     viewModel: FolderViewModel,
+    isClosing: Boolean,
     onDismiss: () -> Unit
 ) {
     val folderApps by viewModel.getAppsInFolder(folder.id!!).collectAsState(initial = emptyList())
     val folders by viewModel.folders.collectAsState()
     var appToMove by remember { mutableStateOf<AppInfo?>(null) }
     
+    val scale = remember { Animatable(0f) }
+    
+    LaunchedEffect(Unit) {
+        scale.animateTo(
+            targetValue = 1f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioNoBouncy,
+                stiffness = Spring.StiffnessMedium
+            )
+        )
+    }
+    
+    LaunchedEffect(isClosing) {
+        if (isClosing) {
+            scale.animateTo(
+                targetValue = 0f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessHigh
+                )
+            )
+        }
+    }
+    
     Dialog(onDismissRequest = onDismiss) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
+                .graphicsLayer {
+                    scaleX = scale.value
+                    scaleY = scale.value
+                }
         ) {
             Column(
                 modifier = Modifier.padding(16.dp)

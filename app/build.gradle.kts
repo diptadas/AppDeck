@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)    // From version catalog
     alias(libs.plugins.kotlin.android)         // From version catalog
     id("org.jetbrains.kotlin.kapt")           // KAPT for Room
+    id("org.jetbrains.kotlin.plugin.serialization") version "1.9.22"
 }
 
 android {
@@ -71,6 +72,9 @@ dependencies {
 
     // Image loading
     implementation("io.coil-kt:coil-compose:2.4.0")
+
+    // Serialization
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
 
     // Testing
     testImplementation(libs.junit)

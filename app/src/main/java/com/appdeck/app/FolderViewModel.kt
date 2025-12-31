@@ -3,11 +3,16 @@ package com.appdeck.app
 import android.app.Application
 import android.content.pm.LauncherApps
 import android.content.pm.PackageManager
+import android.os.Environment
 import android.os.UserHandle
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.encodeToString
+import java.io.File
 
 class FolderViewModel(application: Application) : AndroidViewModel(application) {
     private val db = AppDatabase.getDatabase(application)
@@ -115,5 +120,56 @@ class FolderViewModel(application: Application) : AndroidViewModel(application) 
                 null
             }
         }
+    }
+
+    @Serializable
+    data class ExportData(
+        val folders: List<FolderExport>,
+        val apps: List<AppExport>
+    )
+
+    @Serializable
+    data class FolderExport(
+        val name: String,
+        val order: Int
+    )
+
+    @Serializable
+    data class AppExport(
+        val packageName: String,
+        val appName: String,
+        val folderName: String?
+    )
+
+    fun exportConfiguration(fileName: String, onComplete: (Boolean) -> Unit) = viewModelScope.launch {
+        try {
+            val currentFolders = folders.value
+            val currentApps = dbApps.value
+            
+            val exportData = ExportData(
+                folders = currentFolders.map { FolderExport(it.name, it.order) },
+                apps = currentApps.map { app ->
+                    val folderName = currentFolders.find { it.id == app.folderId }?.name
+                    AppExport(app.packageName, app.appName, folderName)
+                }
+            )
+            
+            val json = Json { prettyPrint = true }.encodeToString(exportData)
+            
+            // Save to Downloads folder
+            val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            val file = File(downloadsDir, fileName)
+            file.writeText(json)
+            
+            onComplete(true)
+        } catch (e: Exception) {
+            onComplete(false)
+        }
+    }
+
+    fun importConfiguration(onComplete: (Boolean) -> Unit) = viewModelScope.launch {
+        // This is a placeholder - actual file picker implementation would be needed
+        // For now, just show the callback
+        onComplete(false)
     }
 }

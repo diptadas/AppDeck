@@ -42,14 +42,16 @@ fun AppListScreen(
     folders: List<FolderEntity>,
     apps: List<AppInfo>,
     viewModel: FolderViewModel,
-    paddingValues: PaddingValues
+    paddingValues: PaddingValues,
+    showCreateFolderDialog: Boolean,
+    showReorderDialog: Boolean,
+    onCreateFolderDismiss: () -> Unit,
+    onReorderDismiss: () -> Unit
 ) {
     val uncategorizedApps by viewModel.uncategorizedApps.collectAsState()
     var selectedFolder by remember { mutableStateOf<FolderEntity?>(null) }
     var appToMove by remember { mutableStateOf<AppInfo?>(null) }
-    var showCreateFolderDialog by remember { mutableStateOf(false) }
     var folderToManage by remember { mutableStateOf<FolderEntity?>(null) }
-    var showReorderDialog by remember { mutableStateOf(false) }
     var isClosingFolder by remember { mutableStateOf(false) }
     val allApps by viewModel.apps.collectAsState()
     
@@ -62,73 +64,34 @@ fun AppListScreen(
     ) {
         // Folders section
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            // Empty item for spacing if needed
+        }
+        
+        // Combined grid for folders and apps
+        item {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(5),
+                modifier = Modifier.height(((folders.size + uncategorizedApps.size + 4) / 5 * 120).dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Text(
-                    text = "Folders",
-                    style = MaterialTheme.typography.headlineSmall
-                )
-                Row {
-                    if (folders.isNotEmpty()) {
-                        IconButton(onClick = { showReorderDialog = true }) {
-                            Icon(Icons.Default.Shuffle, contentDescription = "Reorder folders")
-                        }
-                    }
-                    IconButton(onClick = { showCreateFolderDialog = true }) {
-                        Icon(Icons.Default.Add, contentDescription = "Create folder")
-                    }
+                // Folders first
+                items(folders) { folder ->
+                    val folderApps = allApps.filter { it.folderId == folder.id }.take(3)
+                    FolderGridItem(
+                        folder = folder,
+                        apps = folderApps,
+                        onClick = { selectedFolder = folder },
+                        onLongPress = { folderToManage = folder }
+                    )
                 }
-            }
-        }
-        
-        if (folders.isNotEmpty()) {
-            
-            item {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(5),
-                    modifier = Modifier.height(((folders.size + 4) / 5 * 120).dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    items(folders) { folder ->
-                        val folderApps = allApps.filter { it.folderId == folder.id }.take(3)
-                        FolderGridItem(
-                            folder = folder,
-                            apps = folderApps,
-                            onClick = { selectedFolder = folder },
-                            onLongPress = { folderToManage = folder }
-                        )
-                    }
-                }
-            }
-        }
-        
-        // Uncategorized apps section
-        if (uncategorizedApps.isNotEmpty()) {
-            item {
-                Text(
-                    text = "Apps",
-                    style = MaterialTheme.typography.headlineSmall,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-            }
-            
-            item {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(5),
-                    modifier = Modifier.height(((uncategorizedApps.size + 4) / 5 * 120).dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    items(uncategorizedApps) { app ->
-                        AppGridItem(
-                            app = app,
-                            onLongPress = { appToMove = app }
-                        )
-                    }
+                
+                // Then uncategorized apps
+                items(uncategorizedApps) { app ->
+                    AppGridItem(
+                        app = app,
+                        onLongPress = { appToMove = app }
+                    )
                 }
             }
         }
@@ -181,9 +144,9 @@ fun AppListScreen(
         CreateFolderDialog(
             onCreateFolder = { name ->
                 viewModel.createFolder(name)
-                showCreateFolderDialog = false
+                onCreateFolderDismiss()
             },
-            onDismiss = { showCreateFolderDialog = false }
+            onDismiss = onCreateFolderDismiss
         )
     }
     
@@ -209,9 +172,9 @@ fun AppListScreen(
             folders = folders,
             onReorder = { reorderedFolders ->
                 viewModel.reorderFolders(reorderedFolders)
-                showReorderDialog = false
+                onReorderDismiss()
             },
-            onDismiss = { showReorderDialog = false }
+            onDismiss = onReorderDismiss
         )
     }
 }
@@ -399,7 +362,7 @@ fun FolderPopup(
                 
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(3),
-                    modifier = Modifier.height(400.dp),
+                    modifier = Modifier.heightIn(max = 400.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {

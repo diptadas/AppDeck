@@ -12,9 +12,11 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -40,6 +42,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.foundation.gestures.detectDragGestures
 
 @Composable
 fun AppListScreen(
@@ -53,6 +56,7 @@ fun AppListScreen(
     var appToMove by remember { mutableStateOf<AppInfo?>(null) }
     var showCreateFolderDialog by remember { mutableStateOf(false) }
     var folderToManage by remember { mutableStateOf<FolderEntity?>(null) }
+    var showReorderDialog by remember { mutableStateOf(false) }
     val allApps by viewModel.apps.collectAsState()
     
     LazyColumn(
@@ -73,8 +77,15 @@ fun AppListScreen(
                     text = "Folders",
                     style = MaterialTheme.typography.headlineSmall
                 )
-                IconButton(onClick = { showCreateFolderDialog = true }) {
-                    Icon(Icons.Default.Add, contentDescription = "Create folder")
+                Row {
+                    if (folders.isNotEmpty()) {
+                        IconButton(onClick = { showReorderDialog = true }) {
+                            Icon(Icons.Default.Shuffle, contentDescription = "Reorder folders")
+                        }
+                    }
+                    IconButton(onClick = { showCreateFolderDialog = true }) {
+                        Icon(Icons.Default.Add, contentDescription = "Create folder")
+                    }
                 }
             }
         }
@@ -191,6 +202,18 @@ fun AppListScreen(
                 folderToManage = null
             },
             onDismiss = { folderToManage = null }
+        )
+    }
+    
+    // Reorder folders dialog
+    if (showReorderDialog) {
+        ReorderFoldersDialog(
+            folders = folders,
+            onReorder = { reorderedFolders ->
+                viewModel.reorderFolders(reorderedFolders)
+                showReorderDialog = false
+            },
+            onDismiss = { showReorderDialog = false }
         )
     }
 }
@@ -641,6 +664,98 @@ fun ManageFolderDialog(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("Cancel")
+                    }
+                }
+            }
+        }
+    }
+}
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun ReorderFoldersDialog(
+    folders: List<FolderEntity>,
+    onReorder: (List<FolderEntity>) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var reorderedFolders by remember { mutableStateOf(folders) }
+    
+    Dialog(onDismissRequest = onDismiss) {
+        Card(modifier = Modifier.padding(16.dp)) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("Reorder Folders", style = MaterialTheme.typography.headlineSmall)
+                Text("Use up/down buttons to reorder", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                LazyColumn(
+                    modifier = Modifier.heightIn(max = 400.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    itemsIndexed(reorderedFolders, key = { _, folder -> folder.id }) { index, folder ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    MaterialTheme.colorScheme.surfaceVariant,
+                                    MaterialTheme.shapes.small
+                                )
+                                .padding(12.dp)
+                                .animateItemPlacement(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Folder,
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = folder.name,
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.weight(1f)
+                            )
+                            IconButton(
+                                onClick = {
+                                    if (index > 0) {
+                                        val newList = reorderedFolders.toMutableList()
+                                        val temp = newList[index]
+                                        newList[index] = newList[index - 1]
+                                        newList[index - 1] = temp
+                                        reorderedFolders = newList
+                                    }
+                                },
+                                enabled = index > 0
+                            ) {
+                                Text("↑")
+                            }
+                            IconButton(
+                                onClick = {
+                                    if (index < reorderedFolders.size - 1) {
+                                        val newList = reorderedFolders.toMutableList()
+                                        val temp = newList[index]
+                                        newList[index] = newList[index + 1]
+                                        newList[index + 1] = temp
+                                        reorderedFolders = newList
+                                    }
+                                },
+                                enabled = index < reorderedFolders.size - 1
+                            ) {
+                                Text("↓")
+                            }
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancel")
+                    }
+                    TextButton(onClick = { onReorder(reorderedFolders) }) {
+                        Text("Save")
                     }
                 }
             }

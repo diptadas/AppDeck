@@ -104,6 +104,12 @@ class FolderViewModel(application: Application) : AndroidViewModel(application) 
         folder?.let { deleteFolder(it) }
     }
 
+    fun reorderFolders(reorderedFolders: List<FolderEntity>) = viewModelScope.launch {
+        reorderedFolders.forEachIndexed { index, folder ->
+            db.folderDao().update(folder.copy(order = index))
+        }
+    }
+
     fun deleteFolder(folder: FolderEntity) = viewModelScope.launch {
         db.folderDao().delete(folder)
         // Move apps to uncategorized
